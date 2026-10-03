@@ -1,0 +1,184 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  EMPLOYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  BANNED
+}
+
+enum SalaryUnit {
+  HOUR
+  DAY
+  MONTH
+  JOB
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  FILLED
+  COMPLETED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  role         Role
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  studentProfile  StudentProfile?
+  employerProfile EmployerProfile?
+  employerJobs    Job[]            @relation("EmployerJobs")
+  applications    Application[]    @relation("StudentApplications")
+  reviewsGiven    Review[]         @relation("ReviewsGiven")
+  reviewsReceived Review[]         @relation("ReviewsReceived")
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  userId     String   @id @map("user_id")
+  fullName   String   @map("full_name")
+  phone      String?
+  university String?
+  major      String?
+  bio        String?
+  cvUrl      String?  @map("cv_url")
+  skills     String[] @default([])
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+model EmployerProfile {
+  userId      String  @id @map("user_id")
+  companyName String  @map("company_name")
+  description String?
+  address     String?
+  phone       String?
+  website     String?
+  isVerified  Boolean @default(false) @map("is_verified")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employer_profiles")
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String @unique
+  jobs Job[]
+
+  @@map("categories")
+}
+
+model Job {
+  id          String     @id @default(uuid())
+  employerId  String     @map("employer_id")
+  categoryId  String     @map("category_id")
+  title       String
+  description String
+  workTime    String     @map("work_time")
+  salaryMin   Int        @map("salary_min")
+  salaryMax   Int?       @map("salary_max")
+  salaryUnit  SalaryUnit @default(HOUR) @map("salary_unit")
+  location    String
+  city        String
+  slots       Int        @default(1)
+  deadline    DateTime
+  status      JobStatus  @default(OPEN)
+  isHidden    Boolean    @default(false) @map("is_hidden")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  completedAt DateTime?  @map("completed_at")
+
+  employer     User          @relation("EmployerJobs", fields: [employerId], references: [id], onDelete: Cascade)
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  applications Application[]
+
+  @@index([status, categoryId, city, salaryMin])
+  @@map("jobs")
+}
+
+model Application {
+  id           String            @id @default(uuid())
+  jobId        String            @map("job_id")
+  studentId    String            @map("student_id")
+  coverLetter  String?           @map("cover_letter")
+  cvUrl        String?           @map("cv_url")
+  status       ApplicationStatus @default(PENDING)
+  rejectReason String?           @map("reject_reason")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  job     Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  student User     @relation("StudentApplications", fields: [studentId], references: [id], onDelete: Cascade)
+  reviews Review[]
+
+  @@unique([jobId, studentId])
+  @@index([jobId, status])
+  @@map("applications")
+}
+
+model Review {
+  id            String   @id @default(uuid())
+  applicationId String   @map("application_id")
+  reviewerId    String   @map("reviewer_id")
+  revieweeId    String   @map("reviewee_id")
+  rating        Int
+  comment       String?
+  isHidden      Boolean  @default(false) @map("is_hidden")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer    User        @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee    User        @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, reviewerId])
+  @@map("reviews")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  content   String
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

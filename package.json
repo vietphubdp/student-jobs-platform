@@ -1,0 +1,28 @@
+{
+  "name": "student-jobs-monorepo",
+  "version": "1.0.0",
+  "description": "Nền tảng việc làm part-time cho sinh viên",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=server & npm run dev --workspace=client",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:client": "npm run dev --workspace=client",
+    "build": "npm run build --workspace=server && npm run build --workspace=client",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "prisma:generate": "npm run prisma:generate --workspace=server",
+    "prisma:migrate": "npm run prisma:migrate --workspace=server",
+    "prisma:seed": "npm run prisma:seed --workspace=server"
+  },
+  "keywords": [
+    "student-jobs",
+    "part-time",
+    "marketplace"
+  ],
+  "author": "",
+  "license": "ISC"
+}
